@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="en">
+<p>
+{% for comment in comments %}
+                <div class="row">
+                    {{ comment.username+" "+comment.password }}
+                </div>
+            {% endfor %}
+            </p>
+</html>
+
