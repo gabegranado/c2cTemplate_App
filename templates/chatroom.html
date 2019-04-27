@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+    <h1>{{result.username}}</h1>
 <p>
 {% for comment in comments %}
                 <div class="row">
@@ -7,5 +8,9 @@
                 </div>
             {% endfor %}
             </p>
+                <form action="send" method="POST">
+                    <textarea id ="textAreaComments" class="form-control" name="contents" placeholder="Enter a comment"></textarea>
+                    <input type="submit" class="btn btn-success" value="Post comment">
+                </form>
 </html>
 
