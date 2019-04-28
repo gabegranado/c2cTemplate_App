@@ -44,15 +44,15 @@ class User(db.Model):
     username = db.Column(db.String(15), unique=True)
     email = db.Column(db.String(50), unique=True)
     password = db.Column(db.String(80))
+    lowerPassword = db.Column(db.String(80))
 
-# class LowerUsers(db.Model):
-#     __tablename__="lowerUsers"
+class LowerUsers(db.Model):
+    __tablename__="lowerUsers"
 
-#     id = db.Column(db.Integer, primary_key=True)
-#     username = db.Column(db.String(15), unique=True)
-#     time = db.Column(db.dateTime)
-#     usersID = db.Column(db.Integer,primary_key=True)
-#     content = db.Column(db.Text)
+    id = db.Column(db.Integer, primary_key=True)
+    userChatroomID=db.Column(db.Integer)
+    username = db.Column(db.String(15), unique=False)
+    password = db.Column(db.String(80))
 
 class Content(db.Model):
     __tablename__= "content"
@@ -68,12 +68,21 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 class LoginForm(FlaskForm):
-    username= StringField('username',validators=[InputRequired(),Length(min=4,max=15)])
+    username= StringField('chatroom name',validators=[InputRequired(),Length(min=4,max=15)])
+    name= StringField('name',validators=[InputRequired(),Length(min=4,max=15)])
     password= StringField('password',validators=[InputRequired(),Length(min=8,max=80)])
+class MLoginForm(FlaskForm):
+    username= StringField('chatroom name',validators=[InputRequired(),Length(min=4,max=15)])
+    password= StringField('password',validators=[InputRequired(),Length(min=8,max=80)])
+class SetLowerForm(FlaskForm):
+    name= StringField('name',validators=[InputRequired(),Length(min=4,max=15)])
+class ChatForm(FlaskForm):
+    content= StringField('content',validators=[InputRequired(),Length(min=0,max=9000)])
 class RegisterForm(FlaskForm):
     email = StringField('email', validators=[InputRequired(), Email(message='Invalid email'), Length(max=50)])
     username = StringField('Chatroom name', validators=[InputRequired(), Length(min=4, max=15)])
     password = PasswordField('password', validators=[InputRequired(), Length(min=8, max=80)])
+    lowerPassword = PasswordField('password for sub users', validators=[InputRequired(), Length(min=8, max=80)])
 
 @app.route('/', methods=['GET'])
 def main():
@@ -84,12 +93,25 @@ def login():
     form=LoginForm()
     if form.validate_on_submit():
         user=User.query.filter_by(username=form.username.data).first()
+        lUser=LowerUsers.query.filter_by(userChatroomID=user.id,username=form.name.data).first()
         if user:
-            if check_password_hash(user.password, form.password.data):
-                return post(3)
+            if check_password_hash(lUser.password, form.password.data):
+                return post(user.id,lUser.id)
         return '<h1>invalid username or password</h1>'
         #return '<h1>'+form.username.data+' '+ form.password.data+'</h1>'
     return render_template('login.html', form=form)
+
+@app.route('/mLogin', methods=['GET','POST'])
+def mLogin():
+    form=LoginForm()
+    if form.validate_on_submit():
+        user=User.query.filter_by(username=form.username.data).first()
+        if user:
+            if check_password_hash(user.password, form.password.data):
+                return mPost(user.id)
+        return '<h1>invalid username or password</h1>'
+        #return '<h1>'+form.username.data+' '+ form.password.data+'</h1>'
+    return render_template('masterLogin.html', form=form)
 
 @app.route('/signup', methods=['GET','POST'])
 def signup():
@@ -97,34 +119,50 @@ def signup():
 
     if form.validate_on_submit():
         hashed_password = generate_password_hash(form.password.data, method='sha256')
-        new_user = User(username=form.username.data, email=form.email.data, password=hashed_password,booleanSuper=True)
+        hashed_lowerPassword = generate_password_hash(form.lowerPassword.data, method='sha256')
+        new_user = User(username=form.username.data, email=form.email.data, password=hashed_password,lowerPassword=hashed_lowerPassword,booleanSuper=True)
         db.session.add(new_user)
         db.session.commit()
-
-        return render_template('chatroom.html')
+        user=User.query.filter_by(username=form.username.data).first()
+        return setLUsers(user.id)
         #return '<h1>' + form.username.data + ' ' + form.email.data + ' ' + form.password.data + '</h1>'
 
     return render_template('register.html', form=form)
 
-@app.route('/post/<int:post_id>',methods=['GET','POST'])
-def post(post_id):
-    # post=User.query.filter_by(id=18)
-    # # username=post.username
-    # connection=mysql.connect('users.db')
+@app.route('/setLUsers/<int:post_id>',methods=['GET','POST'])
+def setLUsers(post_id):
+    form=SetLowerForm()
+    user=User.query.filter_by(id=post_id).first()
+    if form.validate_on_submit():
+        lowerUser = LowerUsers(userChatroomID=post_id,username=form.name.data,password=user.lowerPassword)
+        db.session.add(lowerUser)
+        db.session.commit()
+        return render_template('registerLUsers.html',postId=post_id,form=form)
+    return render_template('registerLUsers.html',postId=post_id,form=form)
 
-    # stmt= 'SELECT * from content'
-    # if request.method == "POST":
-    #     true='true'
-    #     # c = Content(content=request.form["contents"])
-    #     # db.session.add(c)
-    #     # db.session.commit()
-    # test="testing"
-    # result = db.session.execute(
-    #         text("SELECT username FROM users WHERE id=:param"),
-    #         {"param":1}
-    #     )
-    result = User.query.filter_by(id=post_id).first_or_404()
-    return render_template('chatroom.html',result=result)
+@app.route('/mPost/<int:mPost_id>',methods=['GET','POST'])
+def mPost(mPost_id):
+    filtered_content=Content.query.filter_by(userChatroomID=mPost_id)
+    return render_template('ITSide.html',postId=mPost_id,form=form,comments=filtered_content)
+    # if form.validate_on_submit():
+    #     # return '<h1>' + form.content.data+ '</h1>'
+    #     chatroomFil = Content(userChatroomID=post_id,usersID=1,content=form.content.data)
+    #     db.session.add(chatroomFil)
+    #     db.session.commit()
+    #     return render_template('chatroom.html',postId=post_id,form=form,comments=filtered_content)
+
+
+@app.route('/post/<int:post_id>/<int:lUser_id>',methods=['GET','POST'])
+def post(post_id,lUser_id):
+    form=ChatForm()
+    filtered_content=Content.query.filter_by(userChatroomID=post_id)
+    if form.validate_on_submit():
+        # return '<h1>' + form.content.data+ '</h1>'
+        chatroomFil = Content(userChatroomID=post_id,usersID=lUser_id,content=form.content.data)
+        db.session.add(chatroomFil)
+        db.session.commit()
+        return render_template('chatroom.html',postId=post_id,form=form,lUserId=lUser_id,comments=filtered_content)
+    return render_template('chatroom.html',postId=post_id,form=form,lUserId=lUser_id,comments=filtered_content)
 
 @app.route('/logout')
 @login_required

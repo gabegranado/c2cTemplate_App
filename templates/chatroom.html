@@ -1,16 +1,28 @@
-<!DOCTYPE html>
-<html lang="en">
-    <h1>{{result.username}}</h1>
-<p>
-{% for comment in comments %}
+{% extends "bootstrap/base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block title %}
+Chatroom
+{% endblock %}
+
+{% block styles %}
+{{super()}}
+<link rel="stylesheet" href="{{url_for('.static', filename='signin.css')}}">
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+            {% for comment in comments %}
                 <div class="row">
-                    {{ comment.username+" "+comment.password }}
+                    {{ comment.content }}
                 </div>
             {% endfor %}
-            </p>
-                <form action="send" method="POST">
-                    <textarea id ="textAreaComments" class="form-control" name="contents" placeholder="Enter a comment"></textarea>
-                    <input type="submit" class="btn btn-success" value="Post comment">
-                </form>
-</html>
+      <form class="form-chat" method="POST" action="/post/{{postId}}/{{lUserId}}">
+        <h2 class="form-chat-heading">{{lUserId}}</h2>
+        {{ form.hidden_tag() }}
+        {{ wtf.form_field(form.content) }}
+        <button class="btn btn-lg btn-primary btn-block" type="submit"></button>
+      </form>
 
+    </div> <!-- /container -->
+{% endblock %}
